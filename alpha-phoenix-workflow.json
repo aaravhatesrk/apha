@@ -1,0 +1,150 @@
+{
+  "name": "Free Webhook Chatbot (Groq)",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "chat", "responseMode": "responseNode", "options": {} },
+      "id": "7ebfaffa-b37f-4274-9b9a-47702dfc33c9",
+      "name": "Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 304]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "message", "name": "message", "type": "string", "value": "={{ $json.body?.message ?? $json.message ?? \"\" }}" },
+            { "id": "sessionId", "name": "sessionId", "type": "string", "value": "={{ $json.body?.sessionId ?? $json.sessionId ?? $execution.id }}" },
+            { "id": "image", "name": "image", "type": "string", "value": "={{ $json.body?.image ?? $json.image ?? \"\" }}" },
+            { "id": "imageMimeType", "name": "imageMimeType", "type": "string", "value": "={{ $json.body?.imageMimeType ?? $json.imageMimeType ?? \"image/jpeg\" }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c37aed95-69b5-45a9-9564-95254801ce4c",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [304, 304]
+    },
+    {
+      "id": "57082b9c-940f-4b75-86c4-ba72598cffa6",
+      "name": "Build Image Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const item = $input.item.json;\nconst out = { json: item };\nif (item.image) {\n  out.binary = {\n    data: {\n      data: item.image,\n      mimeType: item.imageMimeType || 'image/jpeg',\n      fileName: 'upload.jpg'\n    }\n  };\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "007b274e-eed2-4181-b48f-a46416f571cd",
+      "name": "Has Image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [650, 300],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            { "leftValue": "={{ $json.image }}", "operator": { "type": "string", "operation": "notEmpty" }, "rightValue": "" }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "You are Alpha Phoenix, a helpful, friendly AI assistant reachable via a webhook API. Keep answers concise and conversational. If asked your name, say you are Alpha Phoenix. IMPORTANT: the conversation history provided to you is always accurate and complete - if it shows an earlier message from you (the assistant) describing colors, objects, or visual details, that is real: the user attached a real photo earlier in this exact conversation and you (via a vision-capable teammate) already looked at it. Treat that description as ground truth and answer follow-up questions about it directly. Never say you didn't see an image or that the conversation just started if the history shown to you contains prior turns - the history is never wrong. If you are unsure of something else, say so rather than guessing.",
+          "passthroughBinaryImages": true
+        }
+      },
+      "id": "eb92f596-5112-477c-878a-db8d7aab5446",
+      "name": "Chatbot Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [608, 304]
+    },
+    {
+      "parameters": { "model": "llama-3.3-70b-versatile", "options": { "maxTokensToSample": 2048, "temperature": 0.6 } },
+      "id": "01939b36-4d73-48e9-bde4-fd804ed0ae4a",
+      "name": "Groq Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [560, 512]
+    },
+    {
+      "id": "c55e2ce5-5102-4bb3-815a-37183f8dc6e3",
+      "name": "Vision Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [850, 300],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "You are Alpha Phoenix, a helpful, friendly AI assistant reachable via a webhook API. The user has attached a photo - look at it carefully and respond to their message about it. Keep answers concise and conversational. If asked your name, say you are Alpha Phoenix.",
+          "passthroughBinaryImages": true
+        }
+      }
+    },
+    {
+      "id": "b2be0c60-ad85-48e6-b432-014c0a0a0865",
+      "name": "Gemini Vision Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [850, 550],
+      "parameters": { "modelName": "models/gemini-2.5-flash" }
+    },
+    {
+      "parameters": { "sessionIdType": "customKey", "sessionKey": "={{ $('Normalize Input').item.json.sessionId }}", "contextWindowLength": 10 },
+      "id": "fdb426b3-c646-44e6-ab2e-ce0e66de4a45",
+      "name": "Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [704, 512]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"reply\": $json.output.includes(\"</think>\") ? $json.output.split(\"</think>\").pop().trim() : ($json.output.includes(\"<think>\") ? \"Sorry, that one took me too long to think through - could you try again, maybe with a simpler question or a smaller photo?\" : $json.output.trim()) } }}",
+        "options": {}
+      },
+      "id": "2eb38511-b26a-446a-97a4-6af81544de31",
+      "name": "Send Reply",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [912, 304]
+    },
+    {
+      "parameters": {
+        "content": "## How to use ($0 cost)\nPOST JSON to the webhook URL shown on the \"Chat Webhook\" node:\n\n```\n{ \"message\": \"your question\", \"sessionId\": \"any-string-you-pick\", \"image\": \"base64 (optional)\", \"imageMimeType\": \"image/jpeg (optional)\" }\n```\n\n- Text -> Groq (llama-3.3-70b-versatile), free tier\n- Photo attached -> Google Gemini (gemini-2.5-flash), free tier\n- Shared memory across both paths via one Simple Memory node\n- After importing: reconnect the Groq and Google Gemini credentials on their respective model nodes, then activate the workflow.",
+        "height": 220,
+        "width": 1200,
+        "color": 4
+      },
+      "id": "88eaeaaf-6bf9-4603-b7dc-497209f80472",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-80, 60]
+    }
+  ],
+  "connections": {
+    "Chat Webhook": { "main": [[{ "node": "Normalize Input", "type": "main", "index": 0 }]] },
+    "Normalize Input": { "main": [[{ "node": "Build Image Binary", "type": "main", "index": 0 }]] },
+    "Build Image Binary": { "main": [[{ "node": "Has Image?", "type": "main", "index": 0 }]] },
+    "Has Image?": { "main": [[{ "node": "Vision Agent", "type": "main", "index": 0 }], [{ "node": "Chatbot Agent", "type": "main", "index": 0 }]] },
+    "Chatbot Agent": { "main": [[{ "node": "Send Reply", "type": "main", "index": 0 }]] },
+    "Vision Agent": { "main": [[{ "node": "Send Reply", "type": "main", "index": 0 }]] },
+    "Groq Model": { "ai_languageModel": [[{ "node": "Chatbot Agent", "type": "ai_languageModel", "index": 0 }]] },
+    "Gemini Vision Model": { "ai_languageModel": [[{ "node": "Vision Agent", "type": "ai_languageModel", "index": 0 }]] },
+    "Chat Memory": { "ai_memory": [[{ "node": "Chatbot Agent", "type": "ai_memory", "index": 0 }, { "node": "Vision Agent", "type": "ai_memory", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

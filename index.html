@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Alpha Phoenix</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23ff8a3d'/%3E%3Cstop offset='55%25' stop-color='%23ef4444'/%3E%3Cstop offset='100%25' stop-color='%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' d='M32 4c3 8-2 12-2 12s9-2 13 5c3 5 1 10 1 10s6-1 8 6c2 8-4 15-4 15s2-9-4-13c0 0 3 9-6 15-8 6-20 4-24-3-3-6 0-12 0-12s-6 3-9-3c-3-6 2-12 2-12s-5 0-6-6c-1-7 6-11 6-11s-3-6 2-10c4-4 10-2 10-2s-1-6 4-10c3-2 6-2 9 1z'/%3E%3C/svg%3E" />
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f5f7;
+    --panel: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b6b6b;
+    --border: #e2e2e5;
+    --user-bubble: #2563eb;
+    --user-text: #ffffff;
+    --bot-bubble: #ececef;
+    --bot-text: #1a1a1a;
+    --accent: #ef4444;
+    --accent2: #7c3aed;
+    --hover: #f0f0f2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181c;
+      --panel: #212228;
+      --text: #f0f0f2;
+      --muted: #9a9aa2;
+      --border: #34353c;
+      --bot-bubble: #33343b;
+      --bot-text: #f0f0f2;
+      --hover: #2a2b32;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 4px 16px;
+  }
+  .logo {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 6px rgba(239, 68, 68, 0.35));
+    animation: flicker 4s ease-in-out infinite;
+  }
+  @keyframes flicker {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.05) rotate(-2deg); }
+  }
+  .headerText { flex: 1; min-width: 0; }
+  header h1 {
+    font-size: 19px;
+    margin: 0 0 2px;
+    background: linear-gradient(90deg, #ff8a3d, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+  }
+  header p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  #status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+  #status .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #9a9aa2;
+    transition: background 0.3s;
+  }
+  #status.online .dot { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+  #status.offline .dot { background: #ef4444; }
+
+  .headerBtns { display: flex; gap: 6px; flex-shrink: 0; }
+  .headerBtns button {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .headerBtns button:hover { color: var(--text); border-color: var(--accent); }
+  .headerBtns svg { width: 14px; height: 14px; }
+
+  /* History panel */
+  #historyPanel {
+    display: none;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+    margin-bottom: 10px;
+    padding: 6px;
+  }
+  #historyPanel.open { display: block; }
+  #historyPanel .empty {
+    padding: 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  .historyItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .historyItem:hover { background: var(--hover); }
+  .historyItem.active { background: var(--hover); border: 1px solid var(--accent); }
+  .historyItem .meta { flex: 1; min-width: 0; }
+  .historyItem .title {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .historyItem .time { font-size: 11px; color: var(--muted); }
+  .historyItem .del {
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .historyItem .del:hover { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+    scroll-behavior: smooth;
+  }
+
+  .row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    max-width: 88%;
+    animation: rise 0.25s ease-out;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .row.user { align-self: flex-end; flex-direction: row-reverse; }
+  .row.bot { align-self: flex-start; }
+
+  .avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .avatar.bot {
+    background: linear-gradient(135deg, #ff8a3d, var(--accent), var(--accent2));
+    color: #fff;
+  }
+  .avatar.bot svg { width: 16px; height: 16px; }
+  .avatar.user {
+    background: var(--user-bubble);
+    color: #fff;
+  }
+
+  .bubbleWrap { display: flex; flex-direction: column; gap: 6px; }
+  .msg {
+    padding: 10px 14px;
+    border-radius: 16px;
+    line-height: 1.45;
+    font-size: 14px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .row.user .msg {
+    background: var(--user-bubble);
+    color: var(--user-text);
+    border-bottom-right-radius: 4px;
+  }
+  .row.bot .msg {
+    background: var(--bot-bubble);
+    color: var(--bot-text);
+    border-bottom-left-radius: 4px;
+  }
+  .msgImg {
+    max-width: 220px;
+    max-height: 220px;
+    border-radius: 12px;
+    display: block;
+    border: 1px solid var(--border);
+  }
+
+  .msg.error {
+    align-self: center;
+    background: transparent;
+    color: #ef4444;
+    font-size: 12px;
+  }
+
+  .typingDots {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px 2px;
+  }
+  .typingDots span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typingDots span:nth-child(2) { animation-delay: 0.15s; }
+  .typingDots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  /* Pending image preview above input */
+  #pendingImageWrap {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel);
+  }
+  #pendingImageWrap.show { display: flex; }
+  #pendingImageWrap img {
+    width: 40px; height: 40px;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+  #pendingImageWrap .label { flex: 1; font-size: 12.5px; color: var(--muted); }
+  #pendingImageWrap button {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+  }
+  #pendingImageWrap button:hover { color: #ef4444; }
+
+  form {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+  }
+  #attachBtn {
+    flex-shrink: 0;
+    width: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  #attachBtn:hover { color: var(--accent); border-color: var(--accent); }
+  #attachBtn svg { width: 18px; height: 18px; }
+
+  #input {
+    flex: 1;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    min-width: 0;
+  }
+  #input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  }
+  button[type="submit"] {
+    flex-shrink: 0;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s;
+  }
+  button[type="submit"]:hover:not(:disabled) { transform: translateY(-1px); }
+  button[type="submit"]:active:not(:disabled) { transform: translateY(0); }
+  button[type="submit"]:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  #messages::-webkit-scrollbar, #historyPanel::-webkit-scrollbar { width: 8px; }
+  #messages::-webkit-scrollbar-thumb, #historyPanel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <svg class="logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="phoenixGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ff8a3d"/>
+            <stop offset="55%" stop-color="#ef4444"/>
+            <stop offset="100%" stop-color="#7c3aed"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#phoenixGrad)" d="M32 4c3 8-2 12-2 12s9-2 13 5c3 5 1 10 1 10s6-1 8 6c2 8-4 15-4 15s2-9-4-13c0 0 3 9-6 15-8 6-20 4-24-3-3-6 0-12 0-12s-6 3-9-3c-3-6 2-12 2-12s-5 0-6-6c-1-7 6-11 6-11s-3-6 2-10c4-4 10-2 10-2s-1-6 4-10c3-2 6-2 9 1z"/>
+      </svg>
+      <div class="headerText">
+        <h1>Alpha Phoenix</h1>
+        <p>Conversational AI assistant with photo understanding</p>
+        <div id="status" class="offline"><span class="dot"></span><span id="statusText">checking connection...</span></div>
+      </div>
+      <div class="headerBtns">
+        <button id="historyBtn" type="button" title="Past conversations">History</button>
+        <button id="newChatBtn" type="button" title="Start a new conversation">New chat</button>
+      </div>
+    </header>
+
+    <div id="historyPanel"></div>
+
+    <div id="messages"></div>
+
+    <div id="pendingImageWrap">
+      <img id="pendingImagePreview" alt="attached preview" />
+      <span class="label">Photo attached</span>
+      <button id="removeImageBtn" type="button" title="Remove photo">&times;</button>
+    </div>
+
+    <form id="chatForm">
+      <button id="attachBtn" type="button" title="Attach a photo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+      </button>
+      <input id="imageFileInput" type="file" accept="image/*" style="display:none" />
+      <input id="input" type="text" placeholder="Message Alpha Phoenix..." autocomplete="off" />
+      <button id="sendBtn" type="submit">Send</button>
+    </form>
+  </div>
+
+<script>
+  // ============================================================
+  // DEPLOY STEP: after n8n is live on Render, replace the line
+  // below with your real n8n URL, e.g.:
+  //   'https://alpha-phoenix-n8n.onrender.com/webhook/chat'
+  // This is the ONLY line that needs to change to go live.
+  // ============================================================
+  const WEBHOOK_URL = 'http://localhost:5678/webhook/chat';
+  const BOT_NAME = 'Alpha Phoenix';
+
+  const BOT_AVATAR_SVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M32 4c3 8-2 12-2 12s9-2 13 5c3 5 1 10 1 10s6-1 8 6c2 8-4 15-4 15s2-9-4-13c0 0 3 9-6 15-8 6-20 4-24-3-3-6 0-12 0-12s-6 3-9-3c-3-6 2-12 2-12s-5 0-6-6c-1-7 6-11 6-11s-3-6 2-10c4-4 10-2 10-2s-1-6 4-10c3-2 6-2 9 1z"/></svg>`;
+
+  const messagesEl = document.getElementById('messages');
+  const formEl = document.getElementById('chatForm');
+  const inputEl = document.getElementById('input');
+  const sendBtn = document.getElementById('sendBtn');
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  const newChatBtn = document.getElementById('newChatBtn');
+  const historyBtn = document.getElementById('historyBtn');
+  const historyPanel = document.getElementById('historyPanel');
+  const attachBtn = document.getElementById('attachBtn');
+  const imageFileInput = document.getElementById('imageFileInput');
+  const pendingImageWrap = document.getElementById('pendingImageWrap');
+  const pendingImagePreview = document.getElementById('pendingImagePreview');
+  const removeImageBtn = document.getElementById('removeImageBtn');
+
+  const CONVOS_KEY = 'alpha_phoenix_conversations';
+  const ACTIVE_KEY = 'alpha_phoenix_active_id';
+
+  function newId() {
+    return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+  }
+
+  function loadConvos() {
+    try { return JSON.parse(localStorage.getItem(CONVOS_KEY)) || {}; }
+    catch (e) { return {}; }
+  }
+  function saveConvos(convos) {
+    localStorage.setItem(CONVOS_KEY, JSON.stringify(convos));
+  }
+
+  let convos = loadConvos();
+  let activeId = localStorage.getItem(ACTIVE_KEY);
+  if (!activeId || !convos[activeId]) {
+    activeId = createConversation();
+  }
+
+  function createConversation() {
+    const id = newId();
+    convos[id] = { id, title: 'New conversation', updatedAt: Date.now(), messages: [] };
+    saveConvos(convos);
+    localStorage.setItem(ACTIVE_KEY, id);
+    return id;
+  }
+
+  function setActive(id) {
+    activeId = id;
+    localStorage.setItem(ACTIVE_KEY, id);
+  }
+
+  let pendingImage = null; // { dataUrl, base64, mimeType }
+
+  function relativeTime(ts) {
+    const diff = Date.now() - ts;
+    const min = Math.round(diff / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return min + 'm ago';
+    const hr = Math.round(min / 60);
+    if (hr < 24) return hr + 'h ago';
+    return Math.round(hr / 24) + 'd ago';
+  }
+
+  function renderHistoryPanel() {
+    const list = Object.values(convos).sort((a, b) => b.updatedAt - a.updatedAt);
+    historyPanel.innerHTML = '';
+    if (list.length === 0) {
+      historyPanel.innerHTML = '<div class="empty">No past conversations yet</div>';
+      return;
+    }
+    for (const c of list) {
+      const item = document.createElement('div');
+      item.className = 'historyItem' + (c.id === activeId ? ' active' : '');
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const title = document.createElement('div');
+      title.className = 'title';
+      title.textContent = c.title || 'New conversation';
+      const time = document.createElement('div');
+      time.className = 'time';
+      time.textContent = relativeTime(c.updatedAt) + ' · ' + c.messages.length + ' messages';
+      meta.appendChild(title);
+      meta.appendChild(time);
+
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = '×';
+      del.title = 'Delete conversation';
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        delete convos[c.id];
+        saveConvos(convos);
+        if (c.id === activeId) {
+          const id = createConversation();
+          switchTo(id);
+        } else {
+          renderHistoryPanel();
+        }
+      });
+
+      item.appendChild(meta);
+      item.appendChild(del);
+      item.addEventListener('click', () => switchTo(c.id));
+      historyPanel.appendChild(item);
+    }
+  }
+
+  function switchTo(id) {
+    setActive(id);
+    renderMessages();
+    renderHistoryPanel();
+  }
+
+  function renderMessages() {
+    messagesEl.innerHTML = '';
+    const convo = convos[activeId];
+    if (!convo || convo.messages.length === 0) {
+      addRow("Hello, I'm " + BOT_NAME + ". How can I help you today?", 'bot', null, false);
+      return;
+    }
+    for (const m of convo.messages) {
+      addRow(m.text, m.role, m.image || null, false);
+    }
+  }
+
+  function addRow(text, role, imageDataUrl, persist) {
+    const row = document.createElement('div');
+    row.className = 'row ' + role;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar ' + role;
+    avatar.innerHTML = role === 'bot' ? BOT_AVATAR_SVG : 'Y';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'bubbleWrap';
+
+    if (imageDataUrl) {
+      const img = document.createElement('img');
+      img.className = 'msgImg';
+      img.src = imageDataUrl;
+      wrap.appendChild(img);
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg';
+    bubble.textContent = text;
+    if (text) wrap.appendChild(bubble);
+
+    row.appendChild(avatar);
+    row.appendChild(wrap);
+    messagesEl.appendChild(row);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    if (persist) {
+      const convo = convos[activeId];
+      convo.messages.push({ role, text, image: imageDataUrl || undefined });
+      convo.updatedAt = Date.now();
+      if (role === 'user' && convo.title === 'New conversation') {
+        convo.title = text ? text.slice(0, 40) : 'Photo';
+      }
+      saveConvos(convos);
+      renderHistoryPanel();
+    }
+    return { row, bubble };
+  }
+
+  function addError(text) {
+    const div = document.createElement('div');
+    div.className = 'msg error';
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function addTyping() {
+    const { row, bubble } = addRow('', 'bot', null, false);
+    bubble.style.display = 'block';
+    bubble.innerHTML = '<span class="typingDots"><span></span><span></span><span></span></span>';
+    return row;
+  }
+
+  function setStatus(online, text) {
+    statusEl.classList.toggle('online', online);
+    statusEl.classList.toggle('offline', !online);
+    statusText.textContent = text;
+  }
+
+  async function checkConnection() {
+    try {
+      await fetch(WEBHOOK_URL, { method: 'OPTIONS' });
+      setStatus(true, 'connected');
+    } catch (e) {
+      setStatus(false, 'connection unavailable');
+    }
+  }
+  checkConnection();
+
+  newChatBtn.addEventListener('click', () => {
+    const id = createConversation();
+    switchTo(id);
+  });
+
+  historyBtn.addEventListener('click', () => {
+    historyPanel.classList.toggle('open');
+    if (historyPanel.classList.contains('open')) renderHistoryPanel();
+  });
+
+  // --- Photo attach ---
+  attachBtn.addEventListener('click', () => imageFileInput.click());
+
+  function resizeImageFile(file, maxDim, quality) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+            else { width = Math.round(width * maxDim / height); height = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  imageFileInput.addEventListener('change', async () => {
+    const file = imageFileInput.files[0];
+    if (!file) return;
+    const dataUrl = await resizeImageFile(file, 900, 0.82);
+    pendingImage = {
+      dataUrl,
+      base64: dataUrl.split(',')[1],
+      mimeType: 'image/jpeg'
+    };
+    pendingImagePreview.src = dataUrl;
+    pendingImageWrap.classList.add('show');
+    imageFileInput.value = '';
+  });
+
+  removeImageBtn.addEventListener('click', () => {
+    pendingImage = null;
+    pendingImageWrap.classList.remove('show');
+  });
+
+  // --- Send message ---
+  formEl.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = inputEl.value.trim();
+    const image = pendingImage;
+    if (!text && !image) return;
+
+    addRow(text, 'user', image ? image.dataUrl : null, true);
+
+    inputEl.value = '';
+    pendingImage = null;
+    pendingImageWrap.classList.remove('show');
+    inputEl.disabled = true;
+    sendBtn.disabled = true;
+
+    const typingRow = addTyping();
+
+    try {
+      const payload = { message: text, sessionId: activeId };
+      if (image) {
+        payload.image = image.base64;
+        payload.imageMimeType = image.mimeType;
+      }
+
+      const res = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Server responded with ' + res.status);
+
+      const data = await res.json();
+      typingRow.remove();
+      addRow(data.reply ?? JSON.stringify(data), 'bot', null, true);
+      setStatus(true, 'connected');
+    } catch (err) {
+      typingRow.remove();
+      addError('Could not reach ' + BOT_NAME + ' right now. Please try again in a moment.');
+      setStatus(false, 'connection unavailable');
+    } finally {
+      inputEl.disabled = false;
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+  });
+
+  renderMessages();
+  renderHistoryPanel();
+  inputEl.focus();
+</script>
+</body>
+</html>
