@@ -239,6 +239,30 @@
     display: block;
     border: 1px solid var(--border);
   }
+  .fileChip, .downloadChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    font-size: 13px;
+    max-width: 240px;
+  }
+  .downloadChip {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .downloadChip:hover { border-color: var(--accent); }
+  .fileChip .name, .downloadChip .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fileChip .icon, .downloadChip .icon { flex-shrink: 0; }
 
   .msg.error {
     align-self: center;
@@ -367,7 +391,7 @@
       </svg>
       <div class="headerText">
         <h1>Alpha Phoenix</h1>
-        <p>Conversational AI assistant with photo understanding</p>
+        <p>AI assistant with web search, code execution, documents & spreadsheets</p>
         <div id="status" class="offline"><span class="dot"></span><span id="statusText">checking connection...</span></div>
       </div>
       <div class="headerBtns">
@@ -387,10 +411,10 @@
     </div>
 
     <form id="chatForm">
-      <button id="attachBtn" type="button" title="Attach a photo">
+      <button id="attachBtn" type="button" title="Attach a photo or PDF">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
       </button>
-      <input id="imageFileInput" type="file" accept="image/*" style="display:none" />
+      <input id="imageFileInput" type="file" accept="image/*,application/pdf" style="display:none" />
       <input id="input" type="text" placeholder="Message Alpha Phoenix..." autocomplete="off" />
       <button id="sendBtn" type="submit">Send</button>
     </form>
@@ -398,12 +422,14 @@
 
 <script>
   // ============================================================
-  // DEPLOY STEP: after n8n is live on Render, replace the line
-  // below with your real n8n URL, e.g.:
-  //   'https://alpha-phoenix-n8n.onrender.com/webhook/chat'
-  // This is the ONLY line that needs to change to go live.
+  // This points at a Cloudflare Tunnel forwarding to n8n running
+  // locally on the host machine. It only works while that machine
+  // is on and both n8n and the tunnel are running. If the tunnel is
+  // restarted, this URL will change (quick tunnels are not stable) -
+  // update this line to match. This is the ONLY line that needs to
+  // change to point the page at a different backend.
   // ============================================================
-  const WEBHOOK_URL = 'http://localhost:5678/webhook/chat';
+  const WEBHOOK_URL = 'https://thank-guestbook-hart-tolerance.trycloudflare.com/webhook/chat';
   const BOT_NAME = 'Alpha Phoenix';
 
   const BOT_AVATAR_SVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M32 4c3 8-2 12-2 12s9-2 13 5c3 5 1 10 1 10s6-1 8 6c2 8-4 15-4 15s2-9-4-13c0 0 3 9-6 15-8 6-20 4-24-3-3-6 0-12 0-12s-6 3-9-3c-3-6 2-12 2-12s-5 0-6-6c-1-7 6-11 6-11s-3-6 2-10c4-4 10-2 10-2s-1-6 4-10c3-2 6-2 9 1z"/></svg>`;
@@ -527,11 +553,12 @@
       return;
     }
     for (const m of convo.messages) {
-      addRow(m.text, m.role, m.image || null, false);
+      addRow(m.text, m.role, m.attachment || null, false);
     }
   }
 
-  function addRow(text, role, imageDataUrl, persist) {
+  // attachment: null | { kind: 'image', dataUrl } | { kind: 'file', name } | { kind: 'download', name, dataUrl }
+  function addRow(text, role, attachment, persist) {
     const row = document.createElement('div');
     row.className = 'row ' + role;
 
@@ -542,11 +569,25 @@
     const wrap = document.createElement('div');
     wrap.className = 'bubbleWrap';
 
-    if (imageDataUrl) {
+    if (attachment && attachment.kind === 'image') {
       const img = document.createElement('img');
       img.className = 'msgImg';
-      img.src = imageDataUrl;
+      img.src = attachment.dataUrl;
       wrap.appendChild(img);
+    } else if (attachment && attachment.kind === 'file') {
+      const chip = document.createElement('div');
+      chip.className = 'fileChip';
+      chip.innerHTML = '<span class="icon">📄</span><span class="name"></span>';
+      chip.querySelector('.name').textContent = attachment.name;
+      wrap.appendChild(chip);
+    } else if (attachment && attachment.kind === 'download') {
+      const chip = document.createElement('a');
+      chip.className = 'downloadChip';
+      chip.href = attachment.dataUrl;
+      chip.download = attachment.name;
+      chip.innerHTML = '<span class="icon">⬇️</span><span class="name"></span>';
+      chip.querySelector('.name').textContent = attachment.name;
+      wrap.appendChild(chip);
     }
 
     const bubble = document.createElement('div');
@@ -561,10 +602,10 @@
 
     if (persist) {
       const convo = convos[activeId];
-      convo.messages.push({ role, text, image: imageDataUrl || undefined });
+      convo.messages.push({ role, text, attachment: attachment || undefined });
       convo.updatedAt = Date.now();
       if (role === 'user' && convo.title === 'New conversation') {
-        convo.title = text ? text.slice(0, 40) : 'Photo';
+        convo.title = text ? text.slice(0, 40) : (attachment && attachment.name) || 'Attachment';
       }
       saveConvos(convos);
       renderHistoryPanel();
@@ -640,16 +681,41 @@
     });
   }
 
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
   imageFileInput.addEventListener('change', async () => {
     const file = imageFileInput.files[0];
     if (!file) return;
-    const dataUrl = await resizeImageFile(file, 900, 0.82);
-    pendingImage = {
-      dataUrl,
-      base64: dataUrl.split(',')[1],
-      mimeType: 'image/jpeg'
-    };
-    pendingImagePreview.src = dataUrl;
+
+    if (file.type.startsWith('image/')) {
+      const dataUrl = await resizeImageFile(file, 900, 0.82);
+      pendingImage = {
+        kind: 'image',
+        dataUrl,
+        base64: dataUrl.split(',')[1],
+        mimeType: 'image/jpeg'
+      };
+      pendingImagePreview.style.display = '';
+      pendingImagePreview.src = dataUrl;
+      pendingImageWrap.querySelector('.label').textContent = 'Photo attached';
+    } else {
+      const dataUrl = await readFileAsDataUrl(file);
+      pendingImage = {
+        kind: 'file',
+        name: file.name,
+        base64: dataUrl.split(',')[1],
+        mimeType: file.type || 'application/octet-stream'
+      };
+      pendingImagePreview.style.display = 'none';
+      pendingImageWrap.querySelector('.label').textContent = '📄 ' + file.name;
+    }
     pendingImageWrap.classList.add('show');
     imageFileInput.value = '';
   });
@@ -663,10 +729,13 @@
   formEl.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = inputEl.value.trim();
-    const image = pendingImage;
-    if (!text && !image) return;
+    const attached = pendingImage;
+    if (!text && !attached) return;
 
-    addRow(text, 'user', image ? image.dataUrl : null, true);
+    const userAttachment = attached
+      ? (attached.kind === 'image' ? { kind: 'image', dataUrl: attached.dataUrl } : { kind: 'file', name: attached.name })
+      : null;
+    addRow(text, 'user', userAttachment, true);
 
     inputEl.value = '';
     pendingImage = null;
@@ -678,9 +747,9 @@
 
     try {
       const payload = { message: text, sessionId: activeId };
-      if (image) {
-        payload.image = image.base64;
-        payload.imageMimeType = image.mimeType;
+      if (attached) {
+        payload.image = attached.base64;
+        payload.imageMimeType = attached.mimeType;
       }
 
       const res = await fetch(WEBHOOK_URL, {
@@ -693,7 +762,10 @@
 
       const data = await res.json();
       typingRow.remove();
-      addRow(data.reply ?? JSON.stringify(data), 'bot', null, true);
+      const botAttachment = data.file
+        ? { kind: 'download', name: data.fileName || 'download', dataUrl: 'data:' + (data.fileMimeType || 'application/octet-stream') + ';base64,' + data.file }
+        : null;
+      addRow(data.reply ?? JSON.stringify(data), 'bot', botAttachment, true);
       setStatus(true, 'connected');
     } catch (err) {
       typingRow.remove();
