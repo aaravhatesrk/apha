@@ -5,7 +5,7 @@ services:
     runtime: image
     image:
       url: docker.io/n8nio/n8n:latest
-    plan: starter          # Free plan has no persistent disk - workflows/credentials would reset on every restart. Starter (~$7/mo) is the minimum for real use.
+    plan: free
     envVars:
       - key: N8N_HOST
         value: alpha-phoenix-n8n.onrender.com   # replace with your actual Render service hostname after first deploy
@@ -21,10 +21,6 @@ services:
         value: UTC
       - key: N8N_RUNNERS_ENABLED
         value: "true"
-    disk:
-      name: n8n-data
-      mountPath: /home/node/.n8n
-      sizeGB: 1
 
   # --- Static chat UI (index.html) ---
   - type: web
