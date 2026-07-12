@@ -2,7 +2,7 @@ services:
   # --- n8n itself (runs the chatbot workflow) ---
   - type: web
     name: alpha-phoenix-n8n
-    runtime: docker
+    runtime: image
     image:
       url: docker.io/n8nio/n8n:latest
     plan: starter          # Free plan has no persistent disk - workflows/credentials would reset on every restart. Starter (~$7/mo) is the minimum for real use.
@@ -12,11 +12,11 @@ services:
       - key: N8N_PROTOCOL
         value: https
       - key: N8N_PORT
-        value: 5678
+        value: "5678"
       - key: WEBHOOK_URL
         value: https://alpha-phoenix-n8n.onrender.com/   # replace with your actual Render service URL after first deploy
       - key: N8N_ENCRYPTION_KEY
-        sync: false        # set manually in Render dashboard - see instructions
+        sync: false        # set manually in Render dashboard - see README
       - key: GENERIC_TIMEZONE
         value: UTC
       - key: N8N_RUNNERS_ENABLED
@@ -26,10 +26,8 @@ services:
       mountPath: /home/node/.n8n
       sizeGB: 1
 
-  # --- Static chat UI (chatbot.html) ---
+  # --- Static chat UI (index.html) ---
   - type: web
     name: alpha-phoenix-ui
     runtime: static
     staticPublishPath: .
-    buildCommand: ""
-    envVars: []
